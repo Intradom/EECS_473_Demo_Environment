@@ -11,8 +11,8 @@ def main():
     SCREEN_WIDTH = win32api.GetSystemMetrics(0)
     SCREEN_HEIGHT = win32api.GetSystemMetrics(1)
     
-    mouse_x = 0
-    mouse_y = 0
+    mouse_x = (int) (SCREEN_WIDTH / 2)
+    mouse_y = (int) (SCREEN_HEIGHT / 2)
     
     pygame.init()
     screen = pygame.display.set_mode((64, 32))

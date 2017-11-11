@@ -13,14 +13,21 @@
     <sprite>sprites\sp_mouse</sprite>
     <sprite>sprites\sp_exit</sprite>
   </sprites>
-  <backgrounds name="background"/>
+  <backgrounds name="background">
+    <background>background\bg_3</background>
+    <background>background\bg_2</background>
+    <background>background\bg_1</background>
+  </backgrounds>
   <paths name="paths"/>
   <fonts name="fonts">
     <font>fonts\fnt_big</font>
   </fonts>
   <objects name="objects">
+    <object>objects\obj_cmd_countdown</object>
+    <object>objects\obj_cmd_loader</object>
     <object>objects\obj_cmd</object>
-    <object>objects\obj_retry</object>
+    <object>objects\obj_start</object>
+    <object>objects\obj_restart</object>
     <object>objects\obj_mouse</object>
     <object>objects\obj_exit</object>
     <object>objects\obj_cell</object>
@@ -28,8 +35,11 @@
     <object>objects\obj_vert_wall</object>
     <object>objects\obj_hori_wall</object>
   </objects>
-  <timelines name="timelines"/>
   <rooms name="rooms">
+    <room>rooms\rm_start</room>
+    <room>rooms\rm_countdown_3</room>
+    <room>rooms\rm_countdown_2</room>
+    <room>rooms\rm_countdown_1</room>
     <room>rooms\rm_main</room>
     <room>rooms\rm_debrief</room>
   </rooms>
