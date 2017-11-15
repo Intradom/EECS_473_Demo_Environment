@@ -25,7 +25,12 @@
         <arguments>
           <argument>
             <kind>1</kind>
-            <string>game_restart();
+            <string>with (obj_cmd)
+{
+    instance_destroy();
+}   
+
+room_goto(rm_countdown_3);
 </string>
           </argument>
         </arguments>

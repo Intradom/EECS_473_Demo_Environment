@@ -64,9 +64,6 @@ randomize();
 instance_create(room_width / 2 + (-GRID_WIDTH / 2) * CELL_SIZE, room_height / 2 + (-GRID_HEIGHT / 2) * CELL_SIZE, obj_mouse);
 instance_create(room_width / 2 + (GRID_WIDTH / 2) * CELL_SIZE, room_height / 2 + (GRID_HEIGHT / 2) * CELL_SIZE, obj_exit);
 
-// Set default mouse location
-window_mouse_set(room_width / 2 + (-GRID_WIDTH / 2) * CELL_SIZE, room_height / 2 + (-GRID_HEIGHT / 2) * CELL_SIZE);
-
 // Create initial grid
 for (row = -GRID_HEIGHT / 2; row &lt;= GRID_HEIGHT / 2; row++)
 {
@@ -193,14 +190,12 @@ while (to_visit &gt; 0)
         <arguments>
           <argument>
             <kind>1</kind>
-            <string>if (room == 1)
+            <string>if (room == rm_debrief)
 {
     draw_set_font(fnt_big);
     draw_text(room_width / 8, room_height / 4, "Total collisions: " + string(global.collisions));
     draw_text(room_width / 8, room_height / 2, "Elapsed Time: " + string(global.end_time - start_time) + " seconds");
 }
-else // Debug
-    draw_text(0, 0, string(global.collisions));
 </string>
           </argument>
         </arguments>
