@@ -8,10 +8,11 @@ CHANNELS = 1
 RATE = 44100
 
 # Paramters
-COLLECT_FREQUENCY = 10 # in Hertz
-OUTPUT_FREQUENCY = 10 # in Hertz, COLLECT_FREQUENCY / OUTPUT_FREQUENCY should be an integer
-SILENCE_THRESH = 1000 # ignore freq values below this
-CAL_TIME_EACH_COMMAND = 5 # seconds
+COLLECT_FREQUENCY = 2.5 # in Hertz
+OUTPUT_FREQUENCY = 10.0 # in Hertz, COLLECT_FREQUENCY / OUTPUT_FREQUENCY should be an integer
+SILENCE_THRESH = 80 # ignore freq values below this
+MAX_FREQ = 260 # ignore freq values above this
+CAL_TIME_EACH_COMMAND = 15 # seconds
 MED_LR_AUGMENT_VAL_NUM = -1 # Take X values left and right (X each) of median during calibration, -1 takes Q2 to Q3 range of values
 STD_BOOST = 10
 
@@ -22,7 +23,7 @@ stream = audio.open(format=PYAUDIO_FORMAT, channels=CHANNELS,
             rate=RATE, input=True,
             frames_per_buffer=1024)
 print ("start recording...")
-
+ 
 """
     CALIBRATION PHASE
 """
@@ -40,12 +41,19 @@ for n in range(4):
     print("\tHold tone for " + str(CAL_TIME_EACH_COMMAND) + " seconds...")
     
     vals = np.empty((0,))
-    for i in range(CAL_TIME_EACH_COMMAND * COLLECT_FREQUENCY):
-        data_frames = stream.read(RATE / COLLECT_FREQUENCY, exception_on_overflow = False)
+    for i in range((int) (CAL_TIME_EACH_COMMAND * COLLECT_FREQUENCY)):
+        data_frames = stream.read((int) (RATE / COLLECT_FREQUENCY), exception_on_overflow = False)
         data = np.fromstring(data_frames, NUMPY_FORMAT)
         freqs = np.fft.fftfreq(data.size, d=(1.0 / RATE))
         fft_data = np.fft.fft(data)
-        main_freq = freqs[np.argmax(fft_data[0:fft_data.size / 2])]
+        search_values = abs(fft_data[0:fft_data.size / 2]) # Use only half to ignore complex conjugates
+        highest_freq_index = 0
+        while(freqs[highest_freq_index] < MAX_FREQ):
+            highest_freq_index += 1
+            if (highest_freq_index >= freqs.size):
+                print("Did not find specified max freq")
+                exit();
+        main_freq = freqs[np.argmax(search_values[0:highest_freq_index])]
         if (main_freq >= SILENCE_THRESH):
             #print(main_freq)
             vals = np.append(vals, main_freq)
@@ -74,7 +82,7 @@ print(avgs)
 print(stds)
 
 for i in range(4):
-    stds[i] = stds[i] * STD_BOOST
+    stds[i] = (stds[i] + 1) * STD_BOOST
 
 # Adjust thresholds so there is no overlap
 for i in range(4):
@@ -90,19 +98,28 @@ for i in range(4):
 print("After:")
 print(avgs)
 print(stds)
-
 """
     RUN PHASE
 """
 sum = 0
 counter = 1
 reset_count = COLLECT_FREQUENCY / OUTPUT_FREQUENCY
+if (reset_count < 1):
+        reset_count = 1;
 while True:
-    data_frames = stream.read(RATE / COLLECT_FREQUENCY, exception_on_overflow = False)
+    data_frames = stream.read((int) (RATE / COLLECT_FREQUENCY), exception_on_overflow = False)
     data = np.fromstring(data_frames, NUMPY_FORMAT)
     freqs = np.fft.fftfreq(data.size, d=(1.0 / RATE))
     fft_data = np.fft.fft(data)
-    main_freq = freqs[np.argmax(fft_data[0:fft_data.size / 2])] # Use only half to ignore
+    search_values = abs(fft_data[0:fft_data.size / 2]) # Use only half to ignore complex conjugates
+    highest_freq_index = 0
+    while(freqs[highest_freq_index] < MAX_FREQ):
+        highest_freq_index += 1
+        if (highest_freq_index >= freqs.size):
+            print("Did not find specified max freq")
+            exit();
+    main_freq = freqs[np.argmax(search_values[0:highest_freq_index])]
+    #print(main_freq)
     if (main_freq >= SILENCE_THRESH):
         # print(main_freq)
         sum += main_freq
