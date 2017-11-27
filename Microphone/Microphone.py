@@ -15,6 +15,7 @@ MAX_FREQ = 260 # ignore freq values above this
 CAL_TIME_EACH_COMMAND = 10 # seconds
 MED_LR_AUGMENT_VAL_NUM = -1 # Take X values left and right (X each) of median during calibration, -1 takes Q2 to Q3 range of values
 STD_BOOST = 50
+VOLUME_THRESH = 0.75
 
 class Microphone:    
     # Member variables
@@ -22,7 +23,8 @@ class Microphone:
     stream = None
     low_freq_index = 0
     high_freq_index = 0
-    avgs = [0, 0, 0, 0]
+    volume_average = 0
+    avgs = [0, 0, 0, 0] # Up, Down, Left, Right, Click
     stds = [0, 0, 0, 0]
 
     def __init__(self):
@@ -37,12 +39,14 @@ class Microphone:
     def get_main_freq(self):
         data_frames = self.stream.read(int(RATE / COLLECT_FREQUENCY), exception_on_overflow = False)
         data = np.fromstring(data_frames, NUMPY_FORMAT)
+        volume_avg = np.average(abs(data)) / 1000000.0
+        #volume_avg = np.var(abs(data))
         freqs = np.fft.fftfreq(data.size, d=(1.0 / RATE))
         fft_data = np.fft.fft(data)
         search_values = abs(fft_data[0:fft_data.size // 2]) # Use only half to ignore complex conjugates
         main_freq = freqs[np.argmax(search_values[self.low_freq_index:self.high_freq_index]) + self.low_freq_index]
-        #print(main_freq)
-        return main_freq
+        #print(volume_avg)
+        return main_freq, volume_avg
         
     # Single run, returns True if successful calibration
     def calibrate(self, custom_print):
@@ -76,9 +80,14 @@ class Microphone:
             custom_print("\tHold tone for " + str(CAL_TIME_EACH_COMMAND) + " seconds...")
             
             vals = np.empty((0,))
+            volume_sum = 0.0
             for i in range(int(CAL_TIME_EACH_COMMAND * COLLECT_FREQUENCY)):
-                main_freq = self.get_main_freq()
+                main_freq, v_a = self.get_main_freq()
                 vals = np.append(vals, main_freq)
+                volume_sum += v_a
+                
+            self.volume_average = volume_sum / (CAL_TIME_EACH_COMMAND * COLLECT_FREQUENCY)
+                
             if (vals.size < 1 + MED_LR_AUGMENT_VAL_NUM * 2 or vals.size < 1):
                 custom_print("\tInsuffient samples collected")
                 return False
@@ -159,8 +168,9 @@ class Microphone:
         
         sum = 0
         for i in range(VALUES_TO_AVERAGE):
-            main_freq = self.get_main_freq()
-            sum += main_freq
+            main_freq, v_a = self.get_main_freq()
+            if v_a >= (self.volume_average * VOLUME_THRESH):
+                sum += main_freq
         avg_freq = sum / float(VALUES_TO_AVERAGE)
                 
         if (avg_freq > (self.avgs[0] - self.stds[0]) and avg_freq < (self.avgs[0] + self.stds[0])):
