@@ -18,6 +18,7 @@ STD_BOOST = 50
 
 class Microphone:    
     # Member variables
+    calibrated = False
     stream = None
     low_freq_index = 0
     high_freq_index = 0
@@ -121,6 +122,7 @@ class Microphone:
         #print(self.stds)
         
         custom_print("Finished calibration")
+        calibrated = True
         
         return True
         
@@ -129,6 +131,17 @@ class Microphone:
         """
             RUN PHASE
         """
+        
+        if (not calibrated):
+            self.avgs[0] = 125.0
+            self.stds[0] = 50.0
+            self.avgs[1] = 175.0
+            self.stds[1] = 50.0
+            self.avgs[2] = 225.0
+            self.stds[2] = 50.0
+            self.avgs[3] = 275.0
+            self.stds[3] = 50.0
+        
         sum = 0
         for i in range(VALUES_TO_AVERAGE):
             main_freq = self.get_main_freq()
