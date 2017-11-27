@@ -133,6 +133,21 @@ class Microphone:
         """
         
         if (not self.calibrated):
+            data_frames = self.stream.read((int) (RATE / COLLECT_FREQUENCY), exception_on_overflow = False)
+            data = np.fromstring(data_frames, NUMPY_FORMAT)
+            freqs = np.fft.fftfreq(data.size, d=(1.0 / RATE))
+            while(freqs[self.low_freq_index] < MIN_FREQ):
+                self.low_freq_index += 1
+                if (self.low_freq_index >= freqs.size):
+                    custom_print("Did not find specified min freq")
+                    return -1
+            self.high_freq_index = self.low_freq_index # Don't start looking from beginning
+            while(freqs[self.high_freq_index] < MAX_FREQ):
+                self.high_freq_index += 1
+                if (self.high_freq_index >= freqs.size):
+                    custom_print("Did not find specified max freq")
+                    return -1
+            
             self.avgs[0] = 125.0
             self.stds[0] = 50.0
             self.avgs[1] = 175.0

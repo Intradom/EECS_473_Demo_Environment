@@ -3,7 +3,7 @@ from Microphone import Microphone
 def main():
     mic = Microphone()
     
-    if (not mic.calibrate(print)):
+    if (False and not mic.calibrate(print)):
         exit()
     
     while True:
