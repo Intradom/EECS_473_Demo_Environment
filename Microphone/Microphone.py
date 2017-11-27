@@ -122,7 +122,7 @@ class Microphone:
         #print(self.stds)
         
         custom_print("Finished calibration")
-        calibrated = True
+        self.calibrated = True
         
         return True
         
@@ -132,7 +132,7 @@ class Microphone:
             RUN PHASE
         """
         
-        if (not calibrated):
+        if (not self.calibrated):
             self.avgs[0] = 125.0
             self.stds[0] = 50.0
             self.avgs[1] = 175.0
