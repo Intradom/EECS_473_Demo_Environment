@@ -32,15 +32,19 @@ class EMG_Classifier:
             line = line.strip()
             [ch, values_str] = line.split(' :')
             values = values_str.split("[")[1].split(']')[0].split(', ')
-            training_samples[ch].extend(values)
+            int_array = [int(numeric_string) for numeric_string in values]
+            training_samples[ch].extend(int_array)
             
         pyplot.plot(training_samples['ch3'])
         pyplot.show()
         
-        freqs = np.fft.fftfreq(len(training_samples['ch3']), d = 1.0 / (EMG_SAMPLING_RATE))
-        fft_powers = np.fft.fft(training_samples['ch3'])
+        # Demean the channel
+        demeaned_channel = training_samples['ch3'] - np.mean(training_samples['ch3'])
         
-        pyplot.plot(freqs, fft_powers)
+        freqs = np.fft.fftfreq(len(demeaned_channel), d = 1.0 / (EMG_SAMPLING_RATE))
+        fft_powers = abs(np.fft.fft(demeaned_channel))
+        
+        pyplot.plot(freqs[:(freqs.size / 4)], fft_powers[:(freqs.size / 4)])
         pyplot.show()
             
     def classify_chunk(self):
