@@ -10,7 +10,7 @@ import numpy as np
 WALL_SIZE = 64
 PLAYER_SIZE = 32
 GOAL_SIZE = 32
-MOUSE_DEADZONE = 1 # In pixels
+MOUSE_DEADZONE = PLAYER_SIZE / 8.0 # In pixels
 
 class Player:
     x = WALL_SIZE * 1.5
@@ -108,6 +108,7 @@ class App:
         self.start_time = time.time()
         
         self.in_collision = False
+        self.cant_move = False
         self.goal_reached = False
 
         if (maze_num == 1): # Line
@@ -167,9 +168,12 @@ class App:
 
     def scale_move(self, mx, my):
        
-        move_dist = np.linalg.norm((self.player.x - mx, self.player.y - my))
+        move_dist = np.floor(np.linalg.norm((self.player.x - mx, self.player.y - my)))
         if (move_dist > self.player.speed):
             move_dist = self.player.speed
+
+        if (self.cant_move):
+            move_dist = 1
 
         return move_dist
 
@@ -182,7 +186,7 @@ class App:
             x_offset = -self.scale_move(mouse_x, self.player.y)
         elif (self.player.x < mouse_x - MOUSE_DEADZONE):
             x_offset = self.scale_move(mouse_x, self.player.y)
-        elif (self.player.y > mouse_y + MOUSE_DEADZONE):
+        if (self.player.y > mouse_y + MOUSE_DEADZONE):
             y_offset = -self.scale_move(self.player.x, mouse_y)
         elif (self.player.y < mouse_y - MOUSE_DEADZONE):
             y_offset = self.scale_move(self.player.x, mouse_y)
@@ -202,7 +206,10 @@ class App:
             
         return False
  
-    def collision_in_dir(self, x_offset, y_offset, boundary_check):    
+    def collision_in_dir(self, x_offset, y_offset, boundary_check):
+
+        if (x_offset == 0 and y_offset == 0):
+            return False    
         """
         angle_rad = 0
         if (x_offset != 0):
@@ -291,16 +298,19 @@ class App:
             if (not self.goal_reached):
                 # Move player if possible
                 x_offset, y_offset = self.move_intent()
-                if (not self.collision_in_dir(x_offset, y_offset, False)):
+                if (not self.collision_in_dir(x_offset, 0, False) and not self.collision_in_dir(0, y_offset, False) ):
                     self.player.x += x_offset
                     self.player.y += y_offset
+                    self.cant_move = False
+                else:
+                    self.cant_move = True
                     
                 # Check for collision in all directions
                 any_collision = self.collision_in_dir(1, 0, True) or self.collision_in_dir(-1, 0, True) or self.collision_in_dir(0, 1, True) or self.collision_in_dir(0, -1, True)
                 #print(any_collision)
                 if (any_collision and not self.in_collision):
                     self.collision_count += 1
-                    #print(self.collision_count)
+                    print(self.collision_count)
                 self.in_collision = any_collision 
               
                 # Check if on goal
