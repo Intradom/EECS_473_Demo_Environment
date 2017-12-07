@@ -4,7 +4,7 @@ from pygame.locals import *
 import pygame
 import time
 import numpy as np
-import win32api
+from pynput.mouse import Button, Controller
 
 # Parameters
 WALL_SIZE = 64
@@ -49,7 +49,6 @@ class Maze:
  
  
 class App:
- 
     windowWidth = 640
     windowHeight = 640
     player = 0
@@ -64,6 +63,7 @@ class App:
         self._goal_surf = None
         self.player = Player()
         self.maze = Maze()
+        self.mouse = Controller()
         
         self.collision_count = 0
         self.start_time = time.time()
@@ -228,8 +228,8 @@ class App:
             self._running = False
  
         self.wait_seconds(3)
-        # Set the mouse cursor to player x and y, TODO
-        
+        # Set the mouse cursor to player x and y
+        pygame.mouse.set_pos(self.player.x, self.player.y)
         print("--------------------------------")
 
         # Game loop
@@ -265,8 +265,9 @@ class App:
                     # Reset everything
                     self.player.x = WALL_SIZE * 1.5
                     self.player.y = WALL_SIZE * 1.5
-                    # Set the mouse cursor to player x and y, TODO
-                    
+                    # Set the mouse cursor to player x and y
+                    pygame.mouse.set_pos(self.player.x, self.player.y)
+
                     self.start_time = time.time()
                     self.collision_count = 0
                     self.goal_reached = False
