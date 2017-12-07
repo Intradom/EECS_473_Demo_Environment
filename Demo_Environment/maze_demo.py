@@ -74,9 +74,9 @@ class App:
  
         pygame.display.set_caption('Headgear Demo Environment')
         self._running = True
-        self._player_surf = pygame.image.load("player.png").convert_alpha()
-        self._goal_surf = pygame.image.load("goal.png").convert_alpha()
-        self._block_surf = pygame.image.load("wall.png").convert()
+        self._player_surf = pygame.image.load("Maze_Demo_Images/player.png").convert_alpha()
+        self._goal_surf = pygame.image.load("Maze_Demo_Images/goal.png").convert_alpha()
+        self._block_surf = pygame.image.load("Maze_Demo_Images/wall.png").convert()
  
     def on_render(self):
         self._display_surf.fill((0,0,0))
@@ -213,11 +213,11 @@ class App:
                 
             # Check for collision in all directions
             any_collision = self.collision_in_dir(1, 0, True) or self.collision_in_dir(-1, 0, True) or self.collision_in_dir(0, 1, True) or self.collision_in_dir(0, -1, True)
-            print(any_collision)
+            #print(any_collision)
             if (any_collision and not self.in_collision):
                 self.collision_count += 1
+                print(self.collision_count)
             self.in_collision = any_collision
-            print(self.collision_count)
             
             # Check if on goal
             #print(self.goal_collided())
