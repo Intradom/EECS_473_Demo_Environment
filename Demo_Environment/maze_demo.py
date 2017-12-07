@@ -10,7 +10,7 @@ import numpy as np
 WALL_SIZE = 64
 PLAYER_SIZE = 32
 GOAL_SIZE = 32
-MOUSE_DEADZONE = PLAYER_SIZE / 8.0 # In pixels
+MOUSE_DEADZONE = PLAYER_SIZE / 4.0 # In pixels
 
 class Player:
     x = WALL_SIZE * 1.5
@@ -108,7 +108,7 @@ class App:
         self.start_time = time.time()
         
         self.in_collision = False
-        self.cant_move = False
+        self.cant_move = 0
         self.goal_reached = False
 
         if (maze_num == 1): # Line
@@ -172,8 +172,10 @@ class App:
         if (move_dist > self.player.speed):
             move_dist = self.player.speed
 
-        if (self.cant_move):
-            move_dist = 1
+        if (self.cant_move > 0):
+            move_dist -= np.ceil(self.cant_move)
+            if (move_dist < 1):
+                move_dist = 1;
 
         return move_dist
 
@@ -301,9 +303,9 @@ class App:
                 if (not self.collision_in_dir(x_offset, 0, False) and not self.collision_in_dir(0, y_offset, False) ):
                     self.player.x += x_offset
                     self.player.y += y_offset
-                    self.cant_move = False
+                    self.cant_move = 0
                 else:
-                    self.cant_move = True
+                    self.cant_move += 1
                     
                 # Check for collision in all directions
                 any_collision = self.collision_in_dir(1, 0, True) or self.collision_in_dir(-1, 0, True) or self.collision_in_dir(0, 1, True) or self.collision_in_dir(0, -1, True)
