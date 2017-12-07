@@ -2,18 +2,20 @@
 
 from pygame.locals import *
 import pygame
+import time
 import numpy as np
+import win32api
 
 # Parameters
 WALL_SIZE = 64
 PLAYER_SIZE = 32
 GOAL_SIZE = 32
-MOUSE_DEADZONE = 0 # In pixels
+MOUSE_DEADZONE = 1 # In pixels
 
 class Player:
     x = WALL_SIZE * 1.5
     y = WALL_SIZE * 1.5
-    speed = 1
+    speed = 10
  
 class Maze:
     def __init__(self):
@@ -64,9 +66,10 @@ class App:
         self.maze = Maze()
         
         self.collision_count = 0
-        self.timer = 0 # TODO
+        self.start_time = time.time()
         
         self.in_collision = False
+        self.goal_reached = False
  
     def on_init(self):
         pygame.init()
@@ -79,10 +82,14 @@ class App:
         self._block_surf = pygame.image.load("Maze_Demo_Images/wall.png").convert()
  
     def on_render(self):
-        self._display_surf.fill((0,0,0))
-        self._display_surf.blit(self._player_surf,(self.player.x - PLAYER_SIZE / 2.0,self.player.y - PLAYER_SIZE / 2.0))
-        self._display_surf.blit(self._goal_surf,(self.goal_x - GOAL_SIZE / 2.0,self.goal_y - GOAL_SIZE / 2.0))
-        self.maze.draw(self._display_surf, self._block_surf)
+        if (not self.goal_reached):
+            self._display_surf.fill((0,0,0))
+            self._display_surf.blit(self._player_surf,(self.player.x - PLAYER_SIZE / 2.0,self.player.y - PLAYER_SIZE / 2.0))
+            self._display_surf.blit(self._goal_surf,(self.goal_x - GOAL_SIZE / 2.0,self.goal_y - GOAL_SIZE / 2.0))
+            self.maze.draw(self._display_surf, self._block_surf)
+        else:
+            self._display_surf.fill((255, 255, 255))
+
         pygame.display.flip()
  
     def on_cleanup(self):
@@ -109,20 +116,31 @@ class App:
         return (corner_dist_sq <= (circle.r^2))
     """
 
+    def scale_move(self, mx, my):
+       
+        move_dist = np.linalg.norm((self.player.x - mx, self.player.y - my))
+        if (move_dist > self.player.speed):
+            move_dist = self.player.speed
+
+        return move_dist
+
     def move_intent(self):
         mouse_x, mouse_y = pygame.mouse.get_pos()
         
         x_offset = 0
         y_offset = 0
         if (self.player.x > mouse_x + MOUSE_DEADZONE):
-            x_offset = -self.player.speed
+            x_offset = -self.scale_move(mouse_x, self.player.y)
         elif (self.player.x < mouse_x - MOUSE_DEADZONE):
-            x_offset = self.player.speed
+            x_offset = self.scale_move(mouse_x, self.player.y)
         elif (self.player.y > mouse_y + MOUSE_DEADZONE):
-            y_offset = -self.player.speed
+            y_offset = -self.scale_move(self.player.x, mouse_y)
         elif (self.player.y < mouse_y - MOUSE_DEADZONE):
-            y_offset = self.player.speed
-            
+            y_offset = self.scale_move(self.player.x, mouse_y)
+
+        #print('----')
+        #print(x_offset)
+        #print(y_offset)
         return x_offset, y_offset
     
     def wall_block(self, x, y):
@@ -154,19 +172,19 @@ class App:
         if (x_offset != 0):
             if (y_offset != 0):
                 # 45 degrees
-                x_extension = PLAYER_SIZE / 2 * x_offset * np.cos(45) 
+                x_extension = PLAYER_SIZE / 2 * np.cos(45) * np.sign(x_offset)
             else:
                 # 90 degrees
-                x_extension = PLAYER_SIZE / 2 * x_offset
+                x_extension = PLAYER_SIZE / 2 * np.sign(x_offset)
         
         y_extension = 0
         if (y_offset != 0):
             if (x_offset != 0):
                 # 45 degrees
-                y_extension = PLAYER_SIZE / 2 * y_offset * np.cos(45) 
+                y_extension = PLAYER_SIZE / 2 * np.cos(45) * np.sign(y_offset)
             else:
                 # 90 degrees
-                y_extension = PLAYER_SIZE / 2 * y_offset
+                y_extension = PLAYER_SIZE / 2 * np.sign(y_offset)
         
         new_x_extended = self.player.x + x_extension
         new_y_extended = self.player.y + y_extension
@@ -182,6 +200,8 @@ class App:
             
         #print(x_offset)
         #print(y_offset)
+        #print(x_extension)
+        #print(y_extension)
         #print(new_x_extended)
         #print(new_y_extended)
         #print(collided)
@@ -194,34 +214,64 @@ class App:
         
         return False
  
+    def wait_seconds(self, num_secs):
+        if (num_secs == 0):
+            return
+        
+        print(num_secs)
+        time.sleep(1)
+        self.wait_seconds(num_secs - 1)
+
     def on_execute(self):
         # Init
         if self.on_init() == False:
             self._running = False
  
+        self.wait_seconds(3)
+        # Set the mouse cursor to player x and y, TODO
+        
+        print("--------------------------------")
+
         # Game loop
         while( self._running ):
             for event in pygame.event.get():
                 if event.type == QUIT:
                     self._running = False
+                 
+            if (not self.goal_reached):
+                # Move player if possible
+                x_offset, y_offset = self.move_intent()
+                if (not self.collision_in_dir(x_offset, y_offset, False)):
+                    self.player.x += x_offset
+                    self.player.y += y_offset
                     
-            # Move player if possible
-            x_offset, y_offset = self.move_intent()
-            if (not self.collision_in_dir(x_offset, y_offset, False)):
-                self.player.x += x_offset
-                self.player.y += y_offset
-                
-            # Check for collision in all directions
-            any_collision = self.collision_in_dir(1, 0, True) or self.collision_in_dir(-1, 0, True) or self.collision_in_dir(0, 1, True) or self.collision_in_dir(0, -1, True)
-            #print(any_collision)
-            if (any_collision and not self.in_collision):
-                self.collision_count += 1
-                print(self.collision_count)
-            self.in_collision = any_collision
-            
-            # Check if on goal
-            #print(self.goal_collided())
- 
+                # Check for collision in all directions
+                any_collision = self.collision_in_dir(1, 0, True) or self.collision_in_dir(-1, 0, True) or self.collision_in_dir(0, 1, True) or self.collision_in_dir(0, -1, True)
+                #print(any_collision)
+                if (any_collision and not self.in_collision):
+                    self.collision_count += 1
+                    #print(self.collision_count)
+                self.in_collision = any_collision 
+              
+                # Check if on goal
+                if ((self.goal_collided())):
+                    print("Elapsed time: {0:.0f}".format(time.time() - self.start_time))
+                    print("Total collisions: {0}".format(self.collision_count))
+                    self.end_timer = time.time()
+                    self.goal_reached = True
+    
+            if (self.goal_reached):
+                if (time.time() - self.end_timer > 3):
+                    # Reset everything
+                    self.player.x = WALL_SIZE * 1.5
+                    self.player.y = WALL_SIZE * 1.5
+                    # Set the mouse cursor to player x and y, TODO
+                    
+                    self.start_time = time.time()
+                    self.collision_count = 0
+                    self.goal_reached = False
+                    print("--------------------------------")
+    
             self.on_render()
             
         # End
