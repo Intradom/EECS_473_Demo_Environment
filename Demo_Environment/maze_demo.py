@@ -3,8 +3,8 @@
 from pygame.locals import *
 import pygame
 import time
+import sys
 import numpy as np
-from pynput.mouse import Button, Controller
 
 # Parameters
 WALL_SIZE = 64
@@ -18,22 +18,64 @@ class Player:
     speed = 10
  
 class Maze:
-    def __init__(self):
-       self.rows = 10
-       self.cols = 10
-       
-       # Always leave upper left area 2nd row, 2nd col blank b/c player spawns there
-       # Always leave lower right area 2nd last row, 2nd last col blank b/c goal resides there
-       self.grid = [ 1,1,1,1,1,1,1,1,1,1,
-                     1,0,0,0,0,0,0,0,0,1,
-                     1,0,0,0,0,0,0,0,0,1,
-                     1,0,1,1,1,1,1,1,0,1,
-                     1,0,1,0,0,0,0,0,0,1,
-                     1,0,1,0,1,1,1,1,0,1,
-                     1,0,0,0,0,0,0,0,0,1,
-                     1,0,0,0,0,0,0,0,0,1,
-                     1,0,0,0,0,0,0,0,0,1,
-                     1,1,1,1,1,1,1,1,1,1,]
+    def __init__(self, maze_num):
+        self.rows = 12
+        self.cols = 12
+
+        # Always leave upper left area 2nd row, 2nd col blank b/c player spawns there
+        # Always leave lower right area 2nd last row, 2nd last col blank b/c goal resides there
+        if (maze_num == 1):
+            self.grid = [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                          1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1  ]
+        elif (maze_num == 2):
+           self.grid = [  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                          1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1  ]
+        elif (maze_num == 3):
+           self.grid = [  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                          1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1,
+                          1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1,
+                          1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1,
+                          1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1,
+                          1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1,
+                          1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1,
+                          1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1,
+                          1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1,
+                          1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1  ]
+        else:
+           self.grid = [  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                          1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1,
+                          1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1,
+                          1, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1,
+                          1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 1, 1,
+                          1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1,
+                          1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1,
+                          1, 1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1,
+                          1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1,
+                          1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 
+                          1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1,
+                          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1  ]
  
     def draw(self,display_surf,image_surf):
        bx = 0
@@ -49,27 +91,34 @@ class Maze:
  
  
 class App:
-    windowWidth = 640
-    windowHeight = 640
+    windowWidth = 768
+    windowHeight = 768
     player = 0
-    goal_x = windowWidth - WALL_SIZE * 1.5
-    goal_y = windowHeight - WALL_SIZE * 1.5
  
-    def __init__(self):
+    def __init__(self, maze_num):
         self._running = True
         self._display_surf = None
         self._player_surf = None
         self._block_surf = None
         self._goal_surf = None
         self.player = Player()
-        self.maze = Maze()
-        self.mouse = Controller()
+        self.maze = Maze(maze_num)
         
         self.collision_count = 0
         self.start_time = time.time()
         
         self.in_collision = False
         self.goal_reached = False
+
+        if (maze_num == 1): # Line
+            self.goal_x = self.windowWidth - WALL_SIZE * 1.5
+            self.goal_y = WALL_SIZE * 1.5
+        elif (maze_num == 3): # Square
+            self.goal_x = WALL_SIZE * 1.5
+            self.goal_y = WALL_SIZE * 3.5
+        else: # Complex
+            self.goal_x = self.windowWidth - WALL_SIZE * 1.5
+            self.goal_y = self.windowHeight - WALL_SIZE * 1.5
  
     def on_init(self):
         pygame.init()
@@ -223,10 +272,11 @@ class App:
         self.wait_seconds(num_secs - 1)
 
     def on_execute(self):
+
         # Init
         if self.on_init() == False:
             self._running = False
- 
+
         self.wait_seconds(3)
         # Set the mouse cursor to player x and y
         pygame.mouse.set_pos(self.player.x, self.player.y)
@@ -279,5 +329,8 @@ class App:
         self.on_cleanup()
  
 if __name__ == "__main__" :
-    theApp = App()
+    maze_num = int(sys.argv[1])
+    #print(maze_num)
+
+    theApp = App(maze_num)
     theApp.on_execute()
