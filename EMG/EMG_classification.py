@@ -1,6 +1,6 @@
 from time import sleep
 import numpy as np
-from sklearn.cluster import KMeans
+#from sklearn.cluster import KMeans
 from matplotlib import pyplot
 from matplotlib.pyplot import draw, figure, show
 import sys
@@ -65,6 +65,8 @@ class EMG_Classifier:
             training_samples['ch2'] = []
             training_samples['ch3'] = []
             
+        #step 1
+        for file in files:
             f_obj = open(file)
             # Skip first line
             for line in f_obj.readlines()[1:]:
