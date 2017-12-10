@@ -86,7 +86,7 @@ class EMG_Classifier:
                 #pyplot.plot(filtered_samples)
                 #pyplot.show()
             
-            master_file.append(training_samples)
+            master_file.append(training_samples[ch])
     
         #step 2
         #parse csv file
@@ -108,7 +108,6 @@ class EMG_Classifier:
             c = csvFile[line][1]
             sp = csvFile[line][2] # starting point
             print("Debug: " + str(s + 1) + ", " + str(c) + ", " + str(sp))
-            print(np.array(master_file[c]).shape)
             pyplot.plot(master_file[s][c])
             pyplot.show()
             if (s != prev_s or c != prev_c):
