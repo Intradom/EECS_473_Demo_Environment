@@ -1,6 +1,11 @@
 from time import sleep
 import numpy as np
-#from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans
+from sklearn.gaussian_process import GaussianProcessClassifier
+from sklearn.gaussian_process.kernels import RBF
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import precision_score
+from sklearn.metrics import confusion_matrix
 from matplotlib import pyplot
 from matplotlib.pyplot import draw, figure, show
 import sys
@@ -34,8 +39,9 @@ EMG_SAMPLING_RATE = 1000
 FFT_SIZE = 200
 POSITIVE = 1
 NEGATIVE = 0
-SAMPLE_SIZE = 750
+SAMPLE_SIZE = 1000
 NUM_CLUSTERS = 10
+TRAINING_PORTION = 0.7
 
 fileOfBlinks = open("training.csv")
 row = []
@@ -46,27 +52,18 @@ class EMG_Classifier:
     def __init__(self):
         
         master_file = []
-
-        training_samples = dict()
-        training_samples['ch0'] = list()
-        training_samples['ch1'] = list()
-        training_samples['ch2'] = list()
-        training_samples['ch3'] = list()
-        sample_index = 0
-        
         ch_filter = moving_avg_filter_t(250, 250, -0.25, 500)
         
         #step 1
         for file in files:
             print("Parsing " + file)
             
+            training_samples = dict()
             training_samples['ch0'] = []
             training_samples['ch1'] = []
             training_samples['ch2'] = []
             training_samples['ch3'] = []
-            
-        #step 1
-        for file in files:
+        
             f_obj = open(file)
             # Skip first line
             for line in f_obj.readlines()[1:]:
@@ -76,10 +73,10 @@ class EMG_Classifier:
                 int_array = [int(numeric_string) for numeric_string in values]
                 training_samples[ch].extend(int_array)
             
+            """
             channels = ['ch0', 'ch1', 'ch2', 'ch3']
             for ch in channels:
                 # Demean
-                training_samples[ch] -= np.mean(training_samples[ch])
                 filtered_samples = []
                 for sample in training_samples[ch]:
                     [diff_sample, fast_op, slow_op, detection_value] = ch_filter.signal_detect(sample)
@@ -87,13 +84,12 @@ class EMG_Classifier:
                 training_samples[ch] = filtered_samples
                 #pyplot.plot(filtered_samples)
                 #pyplot.show()
-            
-            master_file.append(training_samples[ch])
+            """
+            master_file.append(training_samples)
     
         #step 2
         #parse csv file
         for line in fileOfBlinks.readlines():
-            #print(line)
             [file, channel, startTime] = line.split(',')
             csvFile.append([int(file), 'ch' + channel, int(1000*float(startTime))])
         
@@ -110,17 +106,21 @@ class EMG_Classifier:
             c = csvFile[line][1]
             sp = csvFile[line][2] # starting point
             print("Debug: " + str(s + 1) + ", " + str(c) + ", " + str(sp))
-            pyplot.plot(master_file[s][c])
-            pyplot.show()
+            #pyplot.plot(master_file[s][c])
+            #pyplot.show()
             if (s != prev_s or c != prev_c):
                 prev_seg_end = 0
                 # Take all prev neg examples if available
                 if (prev_s > 0 and prev_c > 0):
-                    for chunk in range(int((len(master_file[prev_s][prev_c]) - prev_seg_end) / SAMPLE_SIZE)):
-                        #print("Negative old")
-                        seg_start = sp + chunk * SAMPLE_SIZE
+                    negative_loops = int((sp - prev_seg_end) / SAMPLE_SIZE)
+                    for chunk in range(negative_loops):
+                        print("Negative prev")
+                        seg_start = prev_seg_end
                         prev_seg_end = seg_start + SAMPLE_SIZE
+                        #print(seg_start)
+                        #print(prev_seg_end)
                         target_segment = master_file[prev_s][prev_c][seg_start:prev_seg_end]
+                        #print(len(target_segment))
                         segmented_data.append(self.segment_processing(target_segment, False))
                         segmented_labels.append(NEGATIVE)
                     
@@ -130,12 +130,14 @@ class EMG_Classifier:
                 exit()
 
             # Get all negative samples before starting point
-            for chunk in range(int((sp - prev_seg_end) / SAMPLE_SIZE)):
-                #print("Negative")
-                seg_start = prev_seg_end + chunk * SAMPLE_SIZE
+            negative_loops = int((sp - prev_seg_end) / SAMPLE_SIZE)
+            print(negative_loops)
+            for chunk in range(negative_loops):
+                print("Negative")
+                seg_start = prev_seg_end
                 prev_seg_end = seg_start + SAMPLE_SIZE
-                #print(seg_start)
-                #print(prev_seg_end)
+                print(seg_start)
+                print(prev_seg_end)
                 target_segment = master_file[s][c][seg_start:prev_seg_end]
                 #print(len(target_segment))
                 segmented_data.append(self.segment_processing(target_segment, False))
@@ -143,7 +145,7 @@ class EMG_Classifier:
 
             # Get 1 positive sample if possible
             if (sp + SAMPLE_SIZE < len(master_file[s][c])):
-                #print("Positive")
+                print("Positive")
                 prev_seg_end = sp + SAMPLE_SIZE
                 target_segment = master_file[s][c][sp:prev_seg_end]
                 segmented_data.append(self.segment_processing(target_segment, True))
@@ -151,15 +153,28 @@ class EMG_Classifier:
 
         #print (segmented_labels)
         
+        print("Kmeans: ")
         kmeans = KMeans(n_clusters=NUM_CLUSTERS).fit(segmented_data)
-        print(kmeans.labels_)
-        print(segmented_labels)
+        #print(kmeans.labels_)
+        #print(segmented_labels)
         # Find purity
         for i in range(NUM_CLUSTERS):
             #print(np.where(kmeans.labels_ == i)[0])
             grouped_labels = np.array(segmented_labels)[np.where(kmeans.labels_ == i)[0]]
             counts = np.bincount(grouped_labels)
-            print("Group " + str(i) + " marked as " + str(np.argmax(counts)) + ", purity : " + str(counts[np.argmax(counts)] / float(grouped_labels.size)))
+            print("Group " + str(i) + " marked as " + str(np.argmax(counts)) + ", size: " + str(grouped_labels.size) + ", purity: " + str(counts[np.argmax(counts)] / float(grouped_labels.size)))
+        
+        # RBF Kernal
+        guass_rbf = GaussianProcessClassifier(1.0 * RBF(1.0))
+        random_indicies = np.arange(len(segmented_data))
+        np.random.shuffle(random_indicies)
+        training_indicies = random_indicies[:int(random_indicies.size * TRAINING_PORTION)]
+        testing_indicies = random_indicies[int(random_indicies.size * TRAINING_PORTION):]
+        guass_rbf.fit(np.array(segmented_data)[training_indicies], np.array(segmented_labels)[training_indicies])
+        predicted_labels = guass_rbf.predict(np.array(segmented_data)[testing_indicies])
+        print("RBF accuracy: " + str(accuracy_score(np.array(segmented_labels)[testing_indicies], predicted_labels)))
+        tn, fp, fn, tp = confusion_matrix(np.array(segmented_labels)[testing_indicies], predicted_labels).ravel()
+        print("RBF TN/FP/FN/TP: " + str(tn) + "/" + str(fp) + "/" + str(fn) + "/" + str(tp))
         
         ch_name = "ch0"
         detected_values = []
@@ -207,21 +222,27 @@ class EMG_Classifier:
             sleep(1)
  
     def segment_processing(self, segment, pos):
-        # FFT into bins of lower frequencies
-        #demeaned = segment - np.mean(segment)
-        #"""
+        segment -= np.mean(segment)
+        """
         pyplot.plot(segment)
         if (pos):
             pyplot.title("Positive")
         else:
             pyplot.title("Negative")
         pyplot.show()
-        #"""
-        fft_powers = abs(np.fft.fft(segment))
-        fft_cropped = fft_powers[:int(fft_powers.size / 8)]
-        pyplot.plot(fft_cropped)
-        pyplot.show()
-        return fft_cropped
+        """
+        # FFT into bins of lower frequencies
+        #fft_powers = abs(np.fft.fft(segment))
+        #processed = fft_powers[:int(fft_powers.size / 4)]
+        
+        # Scaled time domain
+        seg_max = segment[np.argmax(segment)]
+        seg_min = segment[np.argmin(segment)]
+        processed = segment / float(seg_max - seg_min)
+        
+        #pyplot.plot(processed)
+        #pyplot.show()
+        return processed
  
     def classify_chunk(self):
         pass
