@@ -9,6 +9,7 @@ from sklearn.metrics import confusion_matrix
 from matplotlib import pyplot
 from matplotlib.pyplot import draw, figure, show
 import sys
+import pickle
 from moving_average import moving_avg_filter_t
 
 """
@@ -39,13 +40,13 @@ EMG_SAMPLING_RATE = 1000
 FFT_SIZE = 200
 POSITIVE = 1
 NEGATIVE = 0
-SAMPLE_SIZE = 1000
+SAMPLE_SIZE = 950
 NUM_CLUSTERS = 10
-TRAINING_PORTION = 0.7
+TRAINING_PORTION = 1
 REDUCED_BINS_SIZE = 200
-TEST_LOOP_TIMES = 20
+TEST_LOOP_TIMES = 100
 
-BIN_TESTS = [1, 5, 10, 20, 25, 50, 100, 200, 250, 500]
+BIN_TESTS = [REDUCED_BINS_SIZE]
 
 fileOfBlinks = open("training.csv")
 row = []
@@ -53,10 +54,14 @@ csvFile = []
 
 class EMG_Classifier:
 
-    def __init__(self):
-        
+    clf = None
+
+    def __init__(self, train):
+        if (not train):
+            return
+
         master_file = []
-        ch_filter = moving_avg_filter_t(250, 250, -0.25, 500)
+        ch_filter = moving_avg_filter_t(500, 1, -0.25, 500)
         
         #step 1
         for file in files:
@@ -79,7 +84,7 @@ class EMG_Classifier:
             
             channels = ['ch0', 'ch1', 'ch2', 'ch3']
             for ch in channels:
-                # Demean
+                #print(ch)
                 filtered_samples = []
                 for sample in training_samples[ch]:
                     [diff_sample, fast_op, slow_op, detection_value] = ch_filter.signal_detect(sample)
@@ -168,24 +173,31 @@ class EMG_Classifier:
                 #print("Group " + str(i) + " marked as " + str(np.argmax(counts)) + ", size: " + str(grouped_labels.size) + ", purity: " + str(counts[np.argmax(counts)] / float(grouped_labels.size)))
             
             # RBF Kernal
-            guass_rbf = GaussianProcessClassifier(1.0 * RBF(1.0))
+            gauss_rbf = GaussianProcessClassifier(1.0 * RBF(1.0))
             print("RBF: ")
-            avg = 0
-            for i in range(TEST_LOOP_TIMES):
-                random_indicies = np.arange(len(segmented_data))
-                np.random.shuffle(random_indicies)
-                training_indicies = random_indicies[:int(random_indicies.size * TRAINING_PORTION)]
-                testing_indicies = random_indicies[int(random_indicies.size * TRAINING_PORTION):]
-                guass_rbf.fit(np.array(segmented_data)[training_indicies], np.array(segmented_labels)[training_indicies])
-                predicted_labels = guass_rbf.predict(np.array(segmented_data)[testing_indicies])
-                #print("RBF accuracy: " + str(accuracy_score(np.array(segmented_labels)[testing_indicies], predicted_labels)))
-                tn, fp, fn, tp = confusion_matrix(np.array(segmented_labels)[testing_indicies], predicted_labels).ravel()
-                #print("RBF TN/FP/FN/TP: " + str(tn) + "/" + str(fp) + "/" + str(fn) + "/" + str(tp))
-                #print(tp/(fn + tp))
-                avg += tp/(fn + tp)
-            avg /= TEST_LOOP_TIMES
-            print(str(bin_size) + " average: " + str(avg))
-         
+            if (TRAINING_PORTION < 1):
+                data = []
+                for i in range(TEST_LOOP_TIMES):
+                    random_indicies = np.arange(len(segmented_data))
+                    np.random.shuffle(random_indicies)
+                    training_indicies = random_indicies[:int(random_indicies.size * TRAINING_PORTION)]
+                    testing_indicies = random_indicies[int(random_indicies.size * TRAINING_PORTION):]
+                    gauss_rbf.fit(np.array(segmented_data)[training_indicies], np.array(segmented_labels)[training_indicies])
+                    predicted_labels = gauss_rbf.predict(np.array(segmented_data)[testing_indicies])
+                    print("RBF accuracy: " + str(accuracy_score(np.array(segmented_labels)[testing_indicies], predicted_labels)))
+                    tn, fp, fn, tp = confusion_matrix(np.array(segmented_labels)[testing_indicies], predicted_labels).ravel()
+                    print("RBF TN/FP/FN/TP: " + str(tn) + "/" + str(fp) + "/" + str(fn) + "/" + str(tp))
+                    print(float(tp)/(fn + tp))
+                    data.append(float(tp)/(fn + tp))
+                print(str(bin_size) + " average: " + str(np.average(data)) + ", std: " + str(np.std(data)))
+            else:
+                gauss_rbf.fit(np.array(segmented_data), np.array(segmented_labels))
+                f = open('trained_RBF_clf.pk', 'wb')
+                pickle.dump(gauss_rbf, f)
+                print("Classifier saved successfully")
+        #print (pickle.dumps(gauss_rbf))
+
+        """
         ch_name = "ch0"
         detected_values = []
         ch_filter = moving_avg_filter_t(250, 250, -0.25, 500)
@@ -230,6 +242,7 @@ class EMG_Classifier:
         show()
         while True:
             sleep(1)
+    """
  
     def segment_processing(self, segment, pos, bin_size):
         segment -= np.mean(segment)
@@ -251,7 +264,14 @@ class EMG_Classifier:
         #""" Scaled time domain
         seg_max = segment[np.argmax(segment)]
         seg_min = segment[np.argmin(segment)]
-        pre_reduction = segment / float(seg_max - seg_min)
+        seg_range = float(seg_max - seg_min)
+
+        if (seg_range == 0):
+            pre_reduction = segment
+        else:
+            pre_reduction = segment / seg_range
+        
+
         # Break down bins
         processed = []
         average_amount = int(SAMPLE_SIZE / bin_size)
@@ -264,6 +284,14 @@ class EMG_Classifier:
         #pyplot.plot(processed)
         #pyplot.show()
         return processed
- 
+
+    def classify(self, segment):
+        if (self.clf == None):
+            # Load CLF file
+            f = open('trained_RBF_clf.pk', 'rb')
+            self.clf = pickle.load(f)
+
+        return self.clf.predict(np.array(self.segment_processing(segment, False, REDUCED_BINS_SIZE)).reshape(1, -1))
+
     def classify_chunk(self):
         pass
